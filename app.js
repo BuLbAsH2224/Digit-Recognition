@@ -1,4 +1,3 @@
-
 const readline = require('readline');
 const fs = require('fs');
 const brain = require("brain.js");
@@ -25,7 +24,7 @@ async function loadImagesForTesting() {
                              data: img.data,
                              Number: [i]
                          });
-                         console.log(i+ " " + j);
+                      
                      }
                  });
                  promises.push(promise);
@@ -58,7 +57,7 @@ async function loadImagesYourExamples() {
                              data: img.data,
                              Number: [i]
                          });
-                         console.log(i+ " " + j);
+                         
                      }
                  });
                  promises.push(promise);
@@ -74,36 +73,50 @@ async function loadImagesYourExamples() {
             await Promise.all(promises);
         }  
 }
-
  async function loadImagesTrain() {
-     const promises = [];
-     for(let j = 0; j < 10; j++){ //max j = 5400 (with my dataset)
-         for(let i = 0; i <= 9; i++){
-             const promise = getImage(`train_data/${i}/${j}.png`)
+    
+    const promises = [];
+    let files = [];
+    for(let i = 0; i < 10; i++){
+        files.push(fs.readdirSync(`train_data/${i}`));
+    }
+
+    let num = Math.min(files[0].length,files[1].length,files[2].length,files[3].length,files[4].length,files[5].length,files[6].length,files[7].length,files[8].length,files[9].length)
+        for(let i = 0; i < num; i++){
+
+          
+      
+            for(let j = 0; j < 10;j++){
+                if(files[j][i] != undefined && files[j][i] != null){
+                let imagePath = `train_data/${j}/${files[j][i]}`;
+                const promise = getImage(imagePath)
                  .then(img => {
                      if (img) { 
-                         train_data.push({
-                             input: img.data,
-                             output: {[i]: 1}
-                         });
-                         console.log(i+ " " + j);
+                        train_data.push({
+                            input: img.data,
+                            output: {[j]: 1}
+                        });
+                         console.log(j + " " + files[j][i] + " load" );
                      }
                  });
-             promises.push(promise);
-             if(promises.length >= 100) {
-                 await Promise.all(promises);
-                 promises.length = 0; 
-             }
-         }
-     }
-     if(promises.length > 0) {
-         await Promise.all(promises);
-     }
- }
- 
+                 promises.push(promise);
+                 if(promises.length >= 1) {
+                     await Promise.all(promises);
+                     promises.length = 0; 
+                 }
+            }
+        }
+        
+        }
+    
+        if(promises.length > 0) {
+            await Promise.all(promises);
+        }  
+}
 
  loadImagesTrain().then(() => {
     net.train(train_data, {
+        
                log: true
            });
             console.log("The neural network is ready to go!");
@@ -114,16 +127,16 @@ async function loadImagesYourExamples() {
      try {
          let image = await IJS.Image.load(put);
          let grey = image.grey();
-        for(let i = 0; i < grey.data.length;i++){
-             if(Math.round(grey.data[i]) != 0){
-                grey.data[i] = 1;
-             }
-            else grey.data[i] = 0;
-        // grey.data[i] = grey.data[i] / 255;  // If this is included, the training will be very long
-         }
+         let rezize = grey.resize({ width: 28,height:28 });
         
- 
-         return grey;
+         let ImgData = {
+            data: []
+        }
+        for(let i = 0; i < rezize.data.length;i++){
+         ImgData.data.push(rezize.data[i] / 255);
+        }
+
+        return ImgData;
      } catch (error) {
          console.error(`Error loading image ${put}: ${error}`);
          return null;
@@ -175,7 +188,37 @@ console.log(`Correct answers: ${Right.length}. Wrong answers:  ${errors.length}`
 console.log(`Percentage of correct answers: ${(Right.length / testing_data.length) * 100}%`)
 
   }
- });
+
+  if(key.name === 'n'){ //save model
+    const json = JSON.stringify(net.toJSON());
+    let date = new Date()
+    let name = `model_${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()} ${date.getHours()}-${date.getMinutes()}-${date.getSeconds()}-${date.getMilliseconds()}.txt`     
+    fs.writeFile(name, json, function(error){
+        if(error){  // если ошибка
+            return console.log(error);
+        }
+        console.log(`The file ${name} was successfully written`);
+    });
+  }
+
+
+  if(key.name === 'm'){ //load model
+      let filename = "" + ".txt" //enter filename
+
+      try{
+        let file = fs.readFileSync(filename, 'utf8')
+        if(file != undefined && file != null){
+        const json = JSON.parse(file);
+        net.fromJSON(json);
+        console.log("file is load!")
+        }
+    }
+    catch{console.log("Error load file")};
+     
+      
+  }
+}
+);
 
 
  
